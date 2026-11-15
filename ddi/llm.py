@@ -18,7 +18,9 @@ PROVIDERS = {
 }
 
 DEFAULT_MODELS = {
-    "groq": "llama-3.3-70b-versatile",
+    # llama-3.3-70b-versatile was retired by Groq (404 model_not_found, Nov 2026).
+    # Lighter alternative with ~3-4x fewer output tokens: "qwen/qwen3.8-27b".
+    "groq": "openai/gpt-oss-120b",
     "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
     "gemini": "gemini-flash-latest",
     "ollama": "llama3.1",
@@ -52,20 +54,27 @@ def complete(system: str, user: str, *, temperature: float = 0.0,
     if s.llm_api_key:
         headers["Authorization"] = f"Bearer {s.llm_api_key}"
 
-    resp = requests.post(
-        f"{PROVIDERS[provider]}/chat/completions",
-        headers=headers,
-        json={
-            "model": model,
-            "messages": [{"role": "system", "content": system},
-                         {"role": "user", "content": user}],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        },
-        timeout=60,
-    )
+    payload = {
+        "model": model,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if "gpt-oss" in model:
+        # Reasoning model: hidden reasoning counts against max_tokens, and with
+        # the default effort a short budget can be spent before any answer.
+        payload["reasoning_effort"] = "low"
+
+    resp = requests.post(f"{PROVIDERS[provider]}/chat/completions",
+                         headers=headers, json=payload, timeout=60)
     if resp.status_code == 429:
         raise LLMRateLimited(resp.text[:300])
     if resp.status_code >= 400:
         raise RuntimeError(f"LLM error {resp.status_code}: {resp.text[:300]}")
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    choice = resp.json()["choices"][0]
+    content = (choice["message"].get("content") or "").strip()
+    if not content:
+        raise RuntimeError(f"LLM returned no text (finish_reason={choice.get('finish_reason')}); "
+                           f"raise max_tokens (now {max_tokens}).")
+    return content

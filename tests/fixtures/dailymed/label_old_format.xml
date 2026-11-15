@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Trimmed from a real old-format ibuprofen label: 34073-7 sits on an unrelated
+     section ("Preexisting asthma"), the real "Drug Interactions" section is coded
+     as unclassified, and the drug name appears only in a subsection title. -->
+<document xmlns="urn:hl7-org:v3">
+  <title>Ibuprofen Tablets, USP Rx only</title>
+  <component>
+    <structuredBody>
+      <component>
+        <section>
+          <code code="42232-9" codeSystem="2.16.840.1.113883.6.1" displayName="PRECAUTIONS SECTION"/>
+          <title>PRECAUTIONS</title>
+          <component>
+            <section>
+              <code code="34073-7" codeSystem="2.16.840.1.113883.6.1" displayName="DRUG INTERACTIONS SECTION"/>
+              <title>Preexisting asthma</title>
+              <text><paragraph>Patients with asthma may have aspirin-sensitive asthma.</paragraph></text>
+            </section>
+          </component>
+          <component>
+            <section>
+              <code code="34074-5" codeSystem="2.16.840.1.113883.6.1" displayName="DRUG &amp; OR LABORATORY TEST INTERACTIONS SECTION"/>
+              <title>Drug/Laboratory Test Interactions</title>
+              <text><paragraph>Anticoagulant assays may be affected (lab section, must be skipped).</paragraph></text>
+            </section>
+          </component>
+          <component>
+            <section>
+              <code code="42229-5" codeSystem="2.16.840.1.113883.6.1" displayName="SPL UNCLASSIFIED SECTION"/>
+              <title>Drug Interactions</title>
+              <component>
+                <section>
+                  <code code="42229-5" codeSystem="2.16.840.1.113883.6.1" displayName="SPL UNCLASSIFIED SECTION"/>
+                  <title>Methotrexate</title>
+                  <text><paragraph>Caution should be used when NSAIDs are administered concomitantly with methotrexate.</paragraph></text>
+                </section>
+              </component>
+              <component>
+                <section>
+                  <code code="42229-5" codeSystem="2.16.840.1.113883.6.1" displayName="SPL UNCLASSIFIED SECTION"/>
+                  <title>Warfarin-type anticoagulants</title>
+                  <text><paragraph>Bleeding has been reported when ibuprofen tablets and other NSAIDs have been administered to patients on coumarin-type anticoagulants.</paragraph></text>
+                </section>
+              </component>
+            </section>
+          </component>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</document>
