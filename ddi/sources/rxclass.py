@@ -48,6 +48,11 @@ CLASS_ALIASES: dict[str, list[str]] = {
     "calcium channel blocker": ["calcium channel blocker"],
     "p-glycoprotein inhibitor": ["p-gp inhibitor"],
     "p-glycoprotein inducer": ["p-gp inducer"],
+    # found by the evaluation (eval/): sildenafil + nitroglycerin was missed because
+    # labels say "PDE-5 inhibitors" and "organic nitrates"
+    "phosphodiesterase 5 inhibitor": ["pde-5 inhibitor", "pde5 inhibitor",
+                                      "phosphodiesterase-5 inhibitor", "pde 5 inhibitor"],
+    "nitrate vasodilator": ["nitrate", "nitric oxide donor"],
 }
 
 # Phrases too generic to search label text with (they match unrelated passages).

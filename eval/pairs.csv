@@ -1,0 +1,41 @@
+drug_a,drug_b,expected,note
+warfarin,ibuprofen,interaction,NSAID + VKA: bleeding
+warfarin,aspirin,interaction,antiplatelet + VKA: bleeding
+warfarin,fluconazole,interaction,CYP2C9 inhibition: INR rise
+warfarin,amiodarone,interaction,CYP2C9/1A2/3A4 inhibition: INR rise
+warfarin,sulfamethoxazole,interaction,CYP2C9 inhibition: INR rise
+simvastatin,clarithromycin,interaction,strong CYP3A4 inhibitor: myopathy (contraindicated)
+simvastatin,itraconazole,interaction,strong CYP3A4 inhibitor: myopathy (contraindicated)
+simvastatin,gemfibrozil,interaction,myopathy (contraindicated)
+atorvastatin,clarithromycin,interaction,CYP3A4 inhibition: myopathy
+sertraline,tramadol,interaction,serotonin syndrome
+fluoxetine,tramadol,interaction,serotonin syndrome; CYP2D6
+sertraline,linezolid,interaction,MAOI + SSRI: serotonin syndrome (contraindicated)
+fluoxetine,phenelzine,interaction,MAOI + SSRI: serotonin syndrome (contraindicated)
+tramadol,alprazolam,interaction,opioid + benzodiazepine: respiratory depression (boxed)
+oxycodone,diazepam,interaction,opioid + benzodiazepine: respiratory depression (boxed)
+clopidogrel,omeprazole,interaction,CYP2C19 inhibition: reduced antiplatelet effect
+digoxin,amiodarone,interaction,P-gp: digoxin toxicity
+digoxin,verapamil,interaction,P-gp: digoxin toxicity
+lithium,hydrochlorothiazide,interaction,reduced lithium clearance: toxicity
+lisinopril,spironolactone,interaction,hyperkalemia
+sildenafil,nitroglycerin,interaction,hypotension (contraindicated)
+methotrexate,trimethoprim,interaction,bone marrow suppression
+theophylline,ciprofloxacin,interaction,CYP1A2 inhibition: theophylline toxicity
+tizanidine,ciprofloxacin,interaction,CYP1A2 inhibition: hypotension (contraindicated)
+colchicine,clarithromycin,interaction,CYP3A4/P-gp: colchicine toxicity
+azathioprine,allopurinol,interaction,xanthine oxidase: myelotoxicity
+ethinyl estradiol,rifampin,interaction,induction: contraceptive failure
+levothyroxine,calcium carbonate,interaction,reduced absorption
+carbamazepine,clarithromycin,interaction,CYP3A4 inhibition: carbamazepine toxicity
+meloxicam,lisinopril,interaction,NSAID + ACE inhibitor: renal function / reduced effect
+metformin,amoxicillin,none,no clinically significant interaction expected
+acetaminophen,amoxicillin,none,no clinically significant interaction expected
+lisinopril,acetaminophen,none,no clinically significant interaction expected
+atorvastatin,acetaminophen,none,no clinically significant interaction expected
+levothyroxine,amoxicillin,none,no clinically significant interaction expected
+metformin,loratadine,none,no clinically significant interaction expected
+cetirizine,amoxicillin,none,no clinically significant interaction expected
+famotidine,acetaminophen,none,no clinically significant interaction expected
+loratadine,acetaminophen,none,no clinically significant interaction expected
+amlodipine,acetaminophen,none,no clinically significant interaction expected

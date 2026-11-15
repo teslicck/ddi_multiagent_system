@@ -59,6 +59,16 @@ def test_serotonin_classes_add_serotonergic_and_aliases():
     assert terms.count("serotonergic") == 1
 
 
+def test_pde5_and_nitrate_aliases_match_label_wording():
+    # found by eval/: sildenafil + nitroglycerin was missed ("organic nitrates", "PDE-5 inhibitors")
+    nitro = rxclass.terms_from_classes([cls("Nitrate Vasodilator")])
+    sild = rxclass.terms_from_classes([cls("Phosphodiesterase 5 Inhibitor")])
+    passages = [("4.1 Nitrates", "Do not use with organic nitrates in any form."),
+                ("7.2", "Concomitant use with PDE-5 inhibitors is contraindicated.")]
+    assert dailymed.filter_passages(passages[:1], "nitroglycerin", nitro)[0][2] == "nitrate"
+    assert dailymed.filter_passages(passages[1:], "sildenafil", sild)[0][2] == "pde-5 inhibitor"
+
+
 def test_non_fda_sources_are_ignored():
     # ATC/VA list combination-product classes: ibuprofen would become an "opioid"
     terms = rxclass.terms_from_classes([cls("OPIOID ANALGESICS", "VA", "VA"),
