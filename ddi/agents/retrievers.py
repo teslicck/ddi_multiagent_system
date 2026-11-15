@@ -50,9 +50,13 @@ def summarize(system: str, drug_a: str, drug_b: str,
         return "", [f"LLM-сводка не получена ({exc})"]
 
 
-def dailymed_agent(drug_a: str, drug_b: str) -> SourceReport:
-    """Find both labels, pull Drug Interactions, keep passages about the other drug."""
-    evidence, errors = dailymed.find_interactions(drug_a, drug_b,
+def dailymed_agent(drug_a: str, drug_b: str,
+                   terms: dict[str, list[str]] | None = None) -> SourceReport:
+    """Find both labels, pull Drug Interactions, keep passages about the other drug.
+
+    `terms`: extra search terms per drug (RxClass classes), see dailymed.find_interactions.
+    """
+    evidence, errors = dailymed.find_interactions(drug_a, drug_b, terms=terms,
                                                   per_direction=DAILYMED_PER_DIRECTION)
     assign_refs(evidence)
     summary, llm_errors = summarize(DAILYMED_SYSTEM, drug_a, drug_b, evidence)

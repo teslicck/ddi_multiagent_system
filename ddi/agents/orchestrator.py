@@ -47,7 +47,8 @@ def run(drug_a: str, drug_b: str) -> FinalReport:
                            drugs=[a, b], stopped=True)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(dailymed_agent, a.name, b.name),
+        class_terms = {a.name: a.class_terms, b.name: b.class_terms}
+        futures = [pool.submit(dailymed_agent, a.name, b.name, class_terms),
                    pool.submit(pubmed_agent, a.name, b.name)]
         reports = [f.result() for f in futures]
 

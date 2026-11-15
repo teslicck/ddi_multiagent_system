@@ -17,6 +17,10 @@ class DrugName(BaseModel):
     rxcui: str = ""
     matched: str = ""            # the RxNorm concept the input matched ("Advil", "warfarin")
     ingredients: list[str] = Field(default_factory=list)
+    ingredient_rxcui: str = ""
+    classes: list[str] = Field(default_factory=list)      # FDA classes (EPC), for display
+    class_terms: list[str] = Field(default_factory=list)  # label search terms from RxClass
+    class_error: str = ""        # RxClass failed: search falls back to name + curated terms
 
     @property
     def changed(self) -> bool:

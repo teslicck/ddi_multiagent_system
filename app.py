@@ -40,6 +40,13 @@ def show_normalization(report: FinalReport) -> None:
                        f"торговые названия и опечатки не распознаются.")
         elif d.changed:
             st.caption(f"«{d.input}» → действующее вещество **{d.name}** (RxNorm)")
+        if d.class_error:
+            st.warning(f"Классы препарата {d.name} не получены ({d.class_error}): инструкции "
+                       f"ищутся только по названию, упоминания класса (например, «NSAIDs») "
+                       f"могут быть пропущены.")
+    classes = [f"{d.name}: {', '.join(d.classes)}" for d in report.drugs if d.classes]
+    if classes:
+        st.caption("Классы FDA (RxClass): " + " · ".join(classes))
 
 
 st.title("💊 Взаимодействие лекарств")

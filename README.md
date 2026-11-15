@@ -12,6 +12,7 @@
 Пользователь (Streamlit)
         │
    Нормализация названий (RxNorm: Advil → ibuprofen, опечатки, комбинации)
+   + классы FDA (RxClass: meloxicam → NSAID, чтобы найти «NSAIDs» в инструкциях)
         │
    Оркестратор ──┬── DailyMed-агент ── DailyMed REST API  ─┐ параллельно,
                  └── PubMed-агент  ── NCBI E-utilities    ─┘ каждый с LLM-сводкой

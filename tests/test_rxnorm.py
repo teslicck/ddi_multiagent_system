@@ -56,6 +56,10 @@ class FakeResponse:
 @pytest.fixture
 def fake_rxnav(monkeypatch):
     calls = []
+    # classes are tested in test_rxclass.py; here only make sure normalize passes them on
+    monkeypatch.setattr(rxnorm.rxclass, "class_terms",
+                        lambda rxcui: (["nsaid"], ["Nonsteroidal Anti-inflammatory Drug"], None)
+                        if rxcui == "5640" else ([], [], None))
 
     def fake_get(url, params=None, timeout=None):
         path = url.removeprefix(rxnorm.BASE_URL + "/")
@@ -79,6 +83,9 @@ def test_brand_name_to_ingredient(fake_rxnav):
     assert (d.input, d.name, d.status, d.rxcui, d.matched) == \
            ("Advil", "ibuprofen", "exact", "153010", "Advil")
     assert d.changed
+    # classes are looked up for the ingredient (5640), not the brand concept (153010)
+    assert d.ingredient_rxcui == "5640" and d.class_terms == ["nsaid"]
+    assert d.classes == ["Nonsteroidal Anti-inflammatory Drug"] and d.class_error == ""
 
 
 def test_ingredient_stays_and_is_not_marked_changed(fake_rxnav):
@@ -152,7 +159,15 @@ def test_sources_are_searched_with_normalized_names(fake_rxnav, monkeypatch):
                         lambda a, b, **kw: (seen.append(("dm", a, b)), ([], []))[1])
     monkeypatch.setattr(pubmed, "find_interactions",
                         lambda a, b, **kw: (seen.append(("pm", a, b)), ([], []))[1])
+    def dm_find(a, b, **kw):
+        seen.append(("dm", a, b))
+        seen.append(("terms", kw.get("terms")))
+        return [], []
+
+    monkeypatch.setattr(dailymed, "find_interactions", dm_find)
     report = orchestrator.run("Advil", "warfarn")
+    assert ("terms", {"ibuprofen": ["nsaid"], "warfarin": []}) in seen    # class terms passed on
+    seen.remove(("terms", {"ibuprofen": ["nsaid"], "warfarin": []}))
     assert sorted(seen) == [("dm", "ibuprofen", "warfarin"), ("pm", "ibuprofen", "warfarin")]
     assert (report.drug_a, report.drug_b) == ("ibuprofen", "warfarin")
     assert [d.status for d in report.drugs] == ["exact", "approximate"]

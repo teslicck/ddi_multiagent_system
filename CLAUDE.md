@@ -59,6 +59,24 @@ UI превращает их в ссылки на источник. Критик
 Бонус: paracetamol → acetaminophen (DailyMed и PubMed американские). ~3,5 с на название,
 оба названия параллельно.
 
+**Классы препаратов (RxClass, вспомогательный шаг):** `ddi/sources/rxclass.py`. Для
+действующего вещества берутся классы FDA (`relaSource=FDASPL`, EPC и MoA): это те же классы,
+что FDA ставит в инструкциях, поэтому их формулировки совпадают с текстом инструкций.
+Из них строятся термины поиска: единственное число («cytochrome p450 3a4 inhibitor»),
+`cyp3a4 inhibitor`, сокращения из `CLASS_ALIASES` (NSAID, SSRI, SNRI, ACE inhibitor, statin…),
+`serotonergic` для любого класса с серотонином. ATC и VA не берём: там классы комбинированных
+препаратов (ибупрофен попадает в «Opioid analgesics»). Слишком общие фразы — в `TOO_BROAD`.
+Совпадение по имени ранжируется выше, чем по классу; у фрагмента `meta["match"] = "class"`,
+и LLM прямо сообщается, что препарат во фрагменте не назван. Если RxClass не ответил
+(1 повтор, таймаут 10 с), `DrugName.class_error` и предупреждение в UI. Ручной `RELATED_TERMS`
+остался как дополнение (то, чего нет в RxClass: «strong cyp3a4 inhibitor», «anticoagulant»).
+
+Результат на живых данных (до → после): meloxicam + lisinopril — найдено направление
+«инструкция lisinopril про NSAIDs»; escitalopram + tramadol — «инструкция tramadol про
+serotonergic drugs»; sertraline + tramadol — новый фрагмент «Inhibitors of CYP2D6» в
+инструкции tramadol; metformin + amoxicillin — по-прежнему 0 (шума не добавилось).
+RxNav иногда отвечает медленно (1,5–24 с на тот же запрос) и бывают сбои DNS.
+
 **Ссылки от gpt-oss:** модель иногда пишет `【DM1】` вместо `[DM1]`; `normalize_citations`
 приводит такие скобки к обычным после каждого вызова LLM.
 
@@ -76,7 +94,8 @@ ddi/config.py              Settings: st.secrets → env → .env
 ddi/models.py              pydantic-модели
 ddi/llm.py                 complete(system, user): groq|openrouter|gemini|ollama, ретраи на 429
 ddi/sources/dailymed.py    готов: find_interactions(a, b) → (evidence, errors), поиск в обе стороны
-ddi/sources/rxnorm.py      нормализация названий: normalize(name) → DrugName
+ddi/sources/rxnorm.py      нормализация названий: normalize(name) → DrugName (+ классы)
+ddi/sources/rxclass.py     классы FDA из RxClass → термины поиска для инструкций
 ddi/sources/pubmed.py      готов: find_interactions(a, b) → (evidence, errors), ранжирование статей
 ddi/agents/common.py       ref-ы, разбор ссылок, сборка evidence в промпт, формальные проверки
 ddi/agents/retrievers.py   агенты: клиент → ref → LLM-сводка своего источника
@@ -88,6 +107,7 @@ tests/test_dailymed.py     клиент DailyMed на урезанных реа�
 tests/test_pubmed.py       клиент PubMed на урезанных реальных ответах (tests/fixtures/pubmed/)
 tests/test_agents.py       агенты с подставным LLM (FakeLLM), включая бюджет вызовов
 tests/test_rxnorm.py       нормализация на сохранённых ответах RxNav (tests/fixtures/rxnorm/)
+tests/test_rxclass.py      термины классов на сохранённых ответах RxClass (tests/fixtures/rxclass/)
 ```
 
 ## Статус
@@ -100,6 +120,7 @@ tests/test_rxnorm.py       нормализация на сохранённых 
 - [x] Синтезатор и критик (промпты, формат ссылок); проверено вживую на 4 парах и в UI
 - [x] Кэширование (`st.cache_data`), обработка ошибок в UI
 - [x] Нормализация названий через RxNorm (бренды, соли, опечатки, комбинации)
+- [x] Классы препаратов из RxClass вместо ручного списка
 - [x] Тесты клиентов (сохранённые ответы API, без сети)
 - [ ] Деплой на Streamlit Community Cloud
 - [ ] Презентация
@@ -149,8 +170,9 @@ tests/test_rxnorm.py       нормализация на сохранённых 
 
 Автор разрешил отходить от этого плана, если проект становится лучше (жёсткие условия курса
 остаются: ровно 2 источника из реестра, RxNorm только как вспомогательный шаг).
-Кандидаты на улучшение надёжности: классы препаратов из RxClass вместо ручного `RELATED_TERMS`;
-оригинальные инструкции вместо перепаковщиков; второй проход синтезатора с замечаниями критика.
+Кандидаты на улучшение надёжности: оригинальные инструкции вместо перепаковщиков; второй
+проход синтезатора с замечаниями критика; шум от общих терминов (например, «serotonergic»
+находит строку про литий в таблице escitalopram).
 
 ## Результаты живой проверки (ноябрь 2026, пригодится для доклада)
 

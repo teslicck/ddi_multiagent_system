@@ -1,4 +1,4 @@
-"""LLM agents with a scripted fake LLM — no network, no API key."""
+﻿"""LLM agents with a scripted fake LLM — no network, no API key."""
 from __future__ import annotations
 
 import pytest
@@ -133,7 +133,7 @@ def test_summary_prompt_contains_refs_and_drugs(fake_llm):
 
 def test_summary_llm_failure_keeps_evidence(fake_llm, monkeypatch):
     fake_llm(**{"DailyMed": llm.LLMNotConfigured("LLM_API_KEY is empty.")})
-    monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, per_direction: ([dm()], []))
+    monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, per_direction, terms=None: ([dm()], []))
     report = retrievers.dailymed_agent("warfarin", "ibuprofen")
     assert report.evidence[0].ref == "DM1" and report.summary == ""
     assert "LLM_API_KEY is empty" in report.errors[0]
@@ -246,7 +246,7 @@ def test_critic_skips_not_found_answer_even_with_evidence(fake_llm):
 # --------------------------------------------------------------------------- end to end
 
 def test_orchestrator_end_to_end_with_four_llm_calls(fake_llm, monkeypatch):
-    monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, per_direction: ([dm()], []))
+    monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, per_direction, terms=None: ([dm()], []))
     monkeypatch.setattr(pubmed, "find_interactions", lambda a, b, keep: ([pm()], []))
     fake = fake_llm(**{
         "агент источника DailyMed": "- Риск кровотечения [DM1]",
@@ -263,7 +263,7 @@ def test_orchestrator_end_to_end_with_four_llm_calls(fake_llm, monkeypatch):
 
 
 def test_orchestrator_nothing_relevant_uses_one_llm_call(fake_llm, monkeypatch):
-    monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, per_direction: ([], []))
+    monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, per_direction, terms=None: ([], []))
     monkeypatch.setattr(pubmed, "find_interactions", lambda a, b, keep: ([pm()], []))
     fake = fake_llm(**{"агент источника PubMed": "НЕ НАЙДЕНО"})
     report = orchestrator.run("metformin", "amoxicillin")

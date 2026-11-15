@@ -20,6 +20,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from ddi.config import get_settings
 from ddi.models import DrugName, NameStatus
+from ddi.sources import rxclass
 
 BASE_URL = "https://rxnav.nlm.nih.gov/REST"
 
@@ -64,12 +65,20 @@ def _name_of(rxcui: str) -> str:
     return _get(f"rxcui/{rxcui}/properties.json").get("properties", {}).get("name", "")
 
 
-def _ingredients(rxcui: str) -> list[str]:
-    """Active ingredients (TTY=IN) of any concept: brand, salt, ingredient itself."""
+def _ingredients(rxcui: str) -> list[tuple[str, str]]:
+    """Active ingredients (TTY=IN) of any concept: brand, salt, ingredient itself.
+
+    Returns [(ingredient rxcui, lowercase name)] without duplicates.
+    """
     groups = _get(f"rxcui/{rxcui}/related.json", {"tty": "IN"}) \
         .get("relatedGroup", {}).get("conceptGroup") or []
-    names = [p["name"].lower() for g in groups for p in (g.get("conceptProperties") or [])]
-    return sorted(set(names), key=names.index)
+    out: list[tuple[str, str]] = []
+    for g in groups:
+        for p in g.get("conceptProperties") or []:
+            item = (p.get("rxcui", ""), p["name"].lower())
+            if item[1] not in [n for _, n in out]:
+                out.append(item)
+    return out
 
 
 def normalize(user_input: str) -> DrugName:
@@ -90,10 +99,15 @@ def normalize(user_input: str) -> DrugName:
             return DrugName(input=raw, name=fallback, status="not_found", rxcui=rxcui)
         # exact match: the input itself is the RxNorm name (saves a ~1 s request)
         matched = matched or (raw if status == "exact" else _name_of(rxcui)) or raw
+        names = [n for _, n in ingredients]
         if len(ingredients) > 1:
             return DrugName(input=raw, name=fallback, status="combination", rxcui=rxcui,
-                            matched=matched, ingredients=ingredients)
-        return DrugName(input=raw, name=ingredients[0], status=status, rxcui=rxcui,
-                        matched=matched, ingredients=ingredients)
+                            matched=matched, ingredients=names)
+        ing_rxcui, ing_name = ingredients[0]
     except Exception:                    # RxNav down: search with what the user typed
         return DrugName(input=raw, name=fallback, status="unavailable")
+
+    terms, classes, class_error = rxclass.class_terms(ing_rxcui)   # never raises
+    return DrugName(input=raw, name=ing_name, status=status, rxcui=rxcui, matched=matched,
+                    ingredients=names, ingredient_rxcui=ing_rxcui,
+                    classes=classes, class_terms=terms, class_error=class_error or "")

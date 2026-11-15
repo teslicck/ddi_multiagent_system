@@ -88,6 +88,9 @@ def describe(ev: Evidence) -> str:
     if ev.source == "pubmed":
         bits = [b for b in (m.get("year"), ", ".join(m.get("pub_types", [])[:2])) if b]
         return f"{ev.title} ({'; '.join(bits)})" if bits else ev.title
+    if m.get("match") == "class":
+        return (f"{ev.title} (препарат {m.get('about')} здесь не назван; фрагмент найден по "
+                f"классу «{m.get('matched_term')}», к которому он относится)")
     return ev.title
 
 

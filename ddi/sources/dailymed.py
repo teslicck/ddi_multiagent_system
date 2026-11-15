@@ -38,8 +38,10 @@ _BLOCK_TAGS = {f"{_NS}paragraph", f"{_NS}item"}
 _DI_TITLE = re.compile(r"drug\s+interactions?", re.I)
 _LAB_TITLE = re.compile(r"laborator", re.I)
 
-# Class names and synonyms that labels use instead of the drug's own name.
-# Not exhaustive: drugs missing here are matched by name only.
+# Curated synonyms and class names that labels use instead of the drug's own
+# name. Since RxClass (ddi/sources/rxclass.py) supplies classes for any drug,
+# this list only adds wording RxClass lacks ("strong cyp3a4 inhibitor",
+# "anticoagulant" for warfarin, "antiplatelet" for aspirin).
 RELATED_TERMS: dict[str, list[str]] = {
     "warfarin": ["coumarin", "anticoagulant", "vitamin k antagonist"],
     "ibuprofen": ["nsaid", "nonsteroidal anti-inflammatory", "non-steroidal anti-inflammatory"],
@@ -216,17 +218,23 @@ def get_interactions_section(setid: str, title: str | None = None) -> Evidence |
 
 # --------------------------------------------------------------------------- filtering
 
-def terms_for(drug: str) -> list[str]:
+def terms_for(drug: str, extra: list[str] | None = None) -> list[str]:
+    """Drug name first, then curated synonyms, then class terms (RxClass)."""
     name = drug.strip().lower()
-    return [name] + RELATED_TERMS.get(name, [])
+    terms = [name]
+    for t in RELATED_TERMS.get(name, []) + [x.lower() for x in (extra or [])]:
+        if t and t not in terms:
+            terms.append(t)
+    return terms
 
 
-def filter_passages(passages: list[tuple[str, str]], drug: str) -> list[tuple[str, str, str]]:
-    """Keep passages mentioning the drug or a related term.
+def filter_passages(passages: list[tuple[str, str]], drug: str,
+                    extra_terms: list[str] | None = None) -> list[tuple[str, str, str]]:
+    """Keep passages mentioning the drug or a related term (synonym / class).
 
     Returns (section, text, matched term); exact-name hits come first.
     """
-    terms = terms_for(drug)
+    terms = terms_for(drug, extra_terms)
     patterns = [(t, re.compile(rf"\b{re.escape(t)}", re.I)) for t in terms]
     hits: list[tuple[int, str, str, str]] = []
     for sec, text in passages:
@@ -261,12 +269,16 @@ def _clip(text: str, term: str = "", limit: int = MAX_PASSAGE_CHARS) -> str:
 
 
 def find_interactions(drug_a: str, drug_b: str, *, per_direction: int = 4,
-                      labels_to_try: int = 3) -> tuple[list[Evidence], list[str]]:
+                      labels_to_try: int = 3,
+                      terms: dict[str, list[str]] | None = None) -> tuple[list[Evidence], list[str]]:
     """Search both directions: A's label about B, and B's label about A.
 
+    `terms` maps a drug name to extra search terms for it (class terms from
+    RxClass), used when looking for that drug in the other drug's label.
     Returns (evidence, errors). Errors are human-readable notes, not exceptions,
     so one failed direction does not hide the other.
     """
+    terms = terms or {}
     evidence: list[Evidence] = []
     errors: list[str] = []
     for label_drug, other in ((drug_a, drug_b), (drug_b, drug_a)):
@@ -293,13 +305,16 @@ def find_interactions(drug_a: str, drug_b: str, *, per_direction: int = 4,
             continue
 
         passages = [(p["section"], p["text"]) for p in section.meta["passages"]]
-        for sec, text, term in filter_passages(passages, other)[:per_direction]:
+        hits = filter_passages(passages, other, terms.get(other))
+        for sec, text, term in hits[:per_direction]:
             evidence.append(Evidence(
                 source="dailymed",
                 title=f"{section.title} — {sec}",
                 url=section.url,
                 text=_clip(text, term),
                 meta={"setid": section.meta["setid"], "label_drug": label_drug,
-                      "about": other, "matched_term": term, "section": sec},
+                      "about": other, "matched_term": term, "section": sec,
+                      # "class": the label names a class the drug belongs to, not the drug
+                      "match": "name" if term == other.strip().lower() else "class"},
             ))
     return evidence, errors
