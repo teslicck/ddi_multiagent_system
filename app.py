@@ -69,7 +69,8 @@ if submitted:
         st.error("Укажите два разных препарата.")
         st.stop()
 
-    with st.spinner("Агенты собирают информацию: DailyMed и PubMed, затем синтез и проверка…"):
+    with st.spinner("Агенты собирают информацию: DailyMed и PubMed, затем синтез, проверка "
+                    "и исправление по замечаниям (обычно 20–40 с)…"):
         try:
             report = cached_run(a, b)
         except Exception as exc:          # last-resort guard: never show a traceback
@@ -82,15 +83,25 @@ if submitted:
 
     show_normalization(report)
     st.subheader("Итог")
+    if report.revision_note:
+        (st.success if report.revised else st.info)(report.revision_note)
     st.markdown(link_citations(report.answer, report))
     for err in report.errors:
         st.warning(err)
 
-    label = "✅ Проверка критиком" if not report.issues else f"⚠️ Проверка критиком: {len(report.issues)}"
+    stage = "Повторная проверка" if report.revised else "Проверка критиком"
+    label = f"✅ {stage}" if not report.issues else f"⚠️ {stage}: замечаний {len(report.issues)}"
     with st.expander(label, expanded=bool(report.issues)):
         st.write(report.critique)
         for issue in report.issues:
             st.markdown(f"- {link_citations(issue, report)}")
+
+    if report.draft:
+        with st.expander(f"Исходный ответ и замечания к нему ({len(report.draft_issues)})"):
+            for issue in report.draft_issues:
+                st.markdown(f"- {link_citations(issue, report)}")
+            st.divider()
+            st.markdown(link_citations(report.draft, report))
 
     for r in report.reports:
         title = SOURCE_TITLES.get(r.source, r.source)

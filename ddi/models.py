@@ -55,8 +55,13 @@ class FinalReport(BaseModel):
     drug_b: str
     answer: str
     critique: str = ""
-    issues: list[str] = Field(default_factory=list)   # critic findings, one per item
-    errors: list[str] = Field(default_factory=list)   # synthesizer / critic failures
+    issues: list[str] = Field(default_factory=list)   # critic findings on `answer`
+    errors: list[str] = Field(default_factory=list)   # synthesizer / critic / reviser failures
+    # Revision round: the synthesizer's first answer and what the critic found in it.
+    draft: str = ""
+    draft_issues: list[str] = Field(default_factory=list)
+    revised: bool = False        # True: `answer` is the reviser's version
+    revision_note: str = ""      # what happened in the revision round, for the UI
     reports: list[SourceReport] = Field(default_factory=list)
     drugs: list[DrugName] = Field(default_factory=list)   # normalized inputs, [a, b]
     stopped: bool = False        # True: input rejected before searching (unknown / combo / same)

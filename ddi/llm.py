@@ -5,10 +5,19 @@ so switching provider = changing LLM_PROVIDER / LLM_MODEL in secrets.
 """
 from __future__ import annotations
 
+import re
+import threading
+import time
+
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ddi.config import get_settings
+
+# Token usage of every successful call: {"model", "prompt", "completion", "seconds"}.
+# Read by evaluation scripts to see how close a query gets to the per-minute limit.
+usage_log: list[dict] = []
+_usage_lock = threading.Lock()
 
 PROVIDERS = {
     "groq": "https://api.groq.com/openai/v1",
@@ -40,7 +49,9 @@ class LLMNotConfigured(RuntimeError):
 
 
 class LLMRateLimited(RuntimeError):
-    pass
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 def critic_model() -> str | None:
@@ -49,8 +60,33 @@ def critic_model() -> str | None:
     return s.llm_critic_model or DEFAULT_CRITIC_MODELS.get((s.llm_provider or "").lower())
 
 
-@retry(retry=retry_if_exception_type(LLMRateLimited),
-       wait=wait_exponential(multiplier=2, min=2, max=30),
+def _retry_after(resp: requests.Response) -> float | None:
+    """Seconds to wait from a 429: Retry-After header, or 'try again in 7.5s' in the body."""
+    header = resp.headers.get("retry-after")
+    if header:
+        try:
+            return float(header)
+        except ValueError:
+            pass
+    m = re.search(r"try again in (?:(\d+)m)?([\d.]+)s", resp.text)
+    if m:
+        return int(m.group(1) or 0) * 60 + float(m.group(2))
+    return None
+
+
+_backoff = wait_exponential(multiplier=2, min=2, max=30)
+
+
+def _wait(state) -> float:
+    """Honor the provider's retry-after (capped at 30 s), else exponential backoff."""
+    exc = state.outcome.exception() if state.outcome else None
+    hint = getattr(exc, "retry_after", None)
+    if hint:
+        return min(30.0, hint + 0.5)
+    return _backoff(state)
+
+
+@retry(retry=retry_if_exception_type(LLMRateLimited), wait=_wait,
        stop=stop_after_attempt(4), reraise=True)
 def complete(system: str, user: str, *, temperature: float = 0.0,
              max_tokens: int = 800, model: str | None = None) -> str:
@@ -80,13 +116,20 @@ def complete(system: str, user: str, *, temperature: float = 0.0,
         # the default effort a short budget can be spent before any answer.
         payload["reasoning_effort"] = "low"
 
+    started = time.monotonic()
     resp = requests.post(f"{PROVIDERS[provider]}/chat/completions",
                          headers=headers, json=payload, timeout=60)
     if resp.status_code == 429:
-        raise LLMRateLimited(resp.text[:300])
+        raise LLMRateLimited(resp.text[:300], _retry_after(resp))
     if resp.status_code >= 400:
         raise RuntimeError(f"LLM error {resp.status_code}: {resp.text[:300]}")
-    choice = resp.json()["choices"][0]
+    data = resp.json()
+    usage = data.get("usage") or {}
+    with _usage_lock:
+        usage_log.append({"model": model, "prompt": usage.get("prompt_tokens", 0),
+                          "completion": usage.get("completion_tokens", 0),
+                          "seconds": round(time.monotonic() - started, 1)})
+    choice = data["choices"][0]
     content = (choice["message"].get("content") or "").strip()
     if not content:
         raise RuntimeError(f"LLM returned no text (finish_reason={choice.get('finish_reason')}); "

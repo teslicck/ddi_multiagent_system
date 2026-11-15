@@ -4,14 +4,15 @@ Two layers:
   1. deterministic: every citation id exists, every statement has a citation;
   2. LLM (a different model from the synthesizer): each cited claim is really
      supported by the cited fragment, without exaggeration.
-The critic reports problems; it does not rewrite the answer (LLM budget).
+The critic only reports problems; ddi/agents/reviser.py fixes them and the
+critic then checks the revised answer once more.
 """
 from __future__ import annotations
 
 from ddi import llm
-from ddi.agents.common import (all_evidence, citation_problems, citations,
+from ddi.agents.common import (all_evidence, cited_fragments, citation_problems,
                                is_not_found_answer, normalize_citations, parse_json_object)
-from ddi.models import Evidence, SourceReport
+from ddi.models import SourceReport
 
 SYSTEM = """Ты — агент-критик. Проверь ответ о взаимодействии лекарств по исходным фрагментам.
 Для каждого утверждения со ссылкой проверь, что процитированный фрагмент действительно это говорит. Ищи:
@@ -23,12 +24,6 @@ SYSTEM = """Ты — агент-критик. Проверь ответ о вз�
 {"verdict": "ok" или "issues", "issues": [{"claim": "<короткая цитата из ответа>", "problem": "<что не так, по-русски>"}]}"""
 
 MAX_FRAGMENT_CHARS = 1200
-
-
-def _cited_evidence(answer: str, evidence: list[Evidence]) -> list[Evidence]:
-    refs = {r.upper() for r in citations(answer)}
-    cited = [ev for ev in evidence if ev.ref.upper() in refs]
-    return cited or evidence
 
 
 def critique(answer: str, reports: list[SourceReport]) -> tuple[str, list[str], list[str]]:
@@ -43,8 +38,7 @@ def critique(answer: str, reports: list[SourceReport]) -> tuple[str, list[str], 
     issues = citation_problems(answer, evidence)
     errors: list[str] = []
 
-    fragments = "\n\n".join(f"[{ev.ref}] {ev.title}\n{ev.text[:MAX_FRAGMENT_CHARS]}"
-                            for ev in _cited_evidence(answer, evidence))
+    fragments = cited_fragments(answer, evidence, MAX_FRAGMENT_CHARS)
     user = f"Ответ:\n{answer}\n\nИсходные фрагменты:\n\n{fragments}"
     try:
         raw = llm.complete(SYSTEM, user, max_tokens=700, model=llm.critic_model())

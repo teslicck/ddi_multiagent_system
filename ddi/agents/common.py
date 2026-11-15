@@ -109,6 +109,13 @@ def evidence_block(evidence: list[Evidence], max_chars: int = MAX_EVIDENCE_CHARS
     return "\n\n".join(parts)
 
 
+def cited_fragments(answer: str, evidence: list[Evidence], max_chars_each: int) -> str:
+    """Original fragments the answer cites (all fragments if it cites none)."""
+    refs = {r.upper() for r in citations(answer)}
+    cited = [ev for ev in evidence if ev.ref.upper() in refs] or evidence
+    return "\n\n".join(f"[{ev.ref}] {describe(ev)}\n{ev.text[:max_chars_each]}" for ev in cited)
+
+
 # --------------------------------------------------------------------------- checks
 
 _HEADING_ONLY = re.compile(r"^\W*(\*\*[^*]+\*\*|#+ .+)\W*$")

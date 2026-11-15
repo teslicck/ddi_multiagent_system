@@ -32,6 +32,8 @@ class FakeLLM:
                            "max_tokens": max_tokens})
         for key, reply in self.replies.items():
             if key in system:
+                if isinstance(reply, list):       # successive calls get successive replies
+                    reply = reply.pop(0) if len(reply) > 1 else reply[0]
                 if isinstance(reply, Exception):
                     raise reply
                 return reply
