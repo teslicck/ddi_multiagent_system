@@ -246,6 +246,26 @@ def filter_passages(passages: list[tuple[str, str]], drug: str,
     return [(sec, text, term) for _, sec, text, term in hits]
 
 
+_POTENCY = re.compile(r"\b(strong|moderate|weak|potent)\b", re.I)
+
+
+def _potency_qualified_class_match(hit: tuple[str, str, str], drug: str) -> bool:
+    """True for a class-only match inside a group qualified by potency.
+
+    Live case: the simvastatin label's "Strong CYP3A4 inhibitors" group (examples:
+    itraconazole, ketoconazole, ...) matched fluconazole via its class "azole";
+    the LLM then called fluconazole a strong inhibitor and carried over
+    "contraindicated". RxClass has no potency, so such a match would attribute
+    another group's recommendation to the drug. Name matches are always kept, and
+    so are curated terms that state the potency themselves ("strong cyp3a4
+    inhibitor" for clarithromycin in RELATED_TERMS).
+    """
+    sec, text, term = hit
+    if term == drug.strip().lower() or _POTENCY.search(term):
+        return False
+    return bool(_POTENCY.search(f"{sec} {text}"))
+
+
 def _clip(text: str, term: str = "", limit: int = MAX_PASSAGE_CHARS) -> str:
     """Shorten a passage to ~limit chars, keeping the part that mentions `term`.
 
@@ -305,7 +325,8 @@ def find_interactions(drug_a: str, drug_b: str, *, per_direction: int = 4,
             continue
 
         passages = [(p["section"], p["text"]) for p in section.meta["passages"]]
-        hits = filter_passages(passages, other, terms.get(other))
+        hits = [h for h in filter_passages(passages, other, terms.get(other))
+                if not _potency_qualified_class_match(h, other)]
         for sec, text, term in hits[:per_direction]:
             evidence.append(Evidence(
                 source="dailymed",

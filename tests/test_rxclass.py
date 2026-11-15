@@ -137,6 +137,32 @@ def test_name_match_outranks_class_match():
     assert [s for s, _, _ in hits] == ["B", "A"]
 
 
+def test_potency_qualified_class_match_is_dropped_name_match_kept(monkeypatch):
+    # live case: simvastatin label, "Strong CYP3A4 inhibitors" group, fluconazole not listed
+    strong = ("7.1 Drug Interactions", "Strong CYP3A4 inhibitors / Clinical Impact: | Increased "
+              "exposure. / Examples: | Select azole antifungals (itraconazole, ketoconazole)")
+    named = ("7.1 Drug Interactions", "Strong CYP3A4 inhibitors / Examples: | ketoconazole")
+    general = ("7.2", "Azole antifungals may increase simvastatin exposure.")
+    monkeypatch.setattr(dailymed, "search_labels",
+                        lambda drug, limit: [{"setid": drug, "title": drug.upper()}])
+    monkeypatch.setattr(dailymed, "get_interactions_section", lambda setid, title: Evidence(
+        source="dailymed", title=title, url="u", text="", meta={"setid": setid, "passages": [
+            {"section": s, "text": t} for s, t in ([strong, named, general]
+                                                   if setid == "simvastatin" else [])]}))
+
+    ev, _ = dailymed.find_interactions("fluconazole", "simvastatin",
+                                       terms={"fluconazole": ["azole"]})
+    assert [e.meta["section"] for e in ev] == ["7.2"]          # strong group dropped
+
+    ev, _ = dailymed.find_interactions("ketoconazole", "simvastatin",
+                                       terms={"ketoconazole": ["azole"]})
+    assert ev[0].meta["match"] == "name" and "Strong" in ev[0].text   # named -> kept
+
+    # curated term that itself states potency is trusted
+    assert not dailymed._potency_qualified_class_match(
+        ("7.1", strong[1], "strong cyp3a4 inhibitor"), "clarithromycin")
+
+
 def test_find_interactions_marks_class_matches(monkeypatch):
     monkeypatch.setattr(dailymed, "search_labels",
                         lambda drug, limit: [{"setid": drug, "title": drug.upper()}])
