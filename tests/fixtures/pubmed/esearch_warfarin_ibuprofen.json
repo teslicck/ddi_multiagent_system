@@ -1,0 +1,4 @@
+{"header": {"type": "esearch", "version": "0.3"},
+ "esearchresult": {"count": "122", "retmax": "4", "retstart": "0",
+  "idlist": ["19719333", "20043424", "30782418", "11111111"],
+  "querytranslation": "\"warfarin\"[Title/Abstract] AND \"ibuprofen\"[Title/Abstract] AND (\"drug interactions\"[MeSH Terms] OR \"interaction\"[Title/Abstract])"}}

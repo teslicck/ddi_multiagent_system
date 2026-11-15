@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from ddi.models import SourceReport
-from ddi.sources import dailymed
+from ddi.sources import dailymed, pubmed
 
 
 def dailymed_agent(drug_a: str, drug_b: str) -> SourceReport:
@@ -16,6 +16,10 @@ def dailymed_agent(drug_a: str, drug_b: str) -> SourceReport:
 
 
 def pubmed_agent(drug_a: str, drug_b: str) -> SourceReport:
-    """Search PubMed for the pair and summarize the abstracts. TODO."""
-    return SourceReport(source="pubmed", query=f"{drug_a} AND {drug_b}",
-                        errors=["PubMed agent not implemented yet"])
+    """Search PubMed for the pair, keep on-topic abstracts.
+
+    TODO: short LLM summary of the evidence (step 3 in CLAUDE.md).
+    """
+    evidence, errors = pubmed.find_interactions(drug_a, drug_b)
+    return SourceReport(source="pubmed", query=pubmed.build_query(drug_a, drug_b),
+                        evidence=evidence, errors=errors)

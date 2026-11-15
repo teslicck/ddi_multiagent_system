@@ -1,0 +1,62 @@
+<?xml version="1.0" ?>
+<!-- Trimmed real efetch structure for warfarin + ibuprofen, returned out of
+     esearch order on purpose. Cases: broad review that names the drugs in
+     different sentences (dropped), letter with both drugs in the title but no
+     abstract (kept), structured abstract with MedlineDate (kept), inline
+     markup and ArticleDate fallback (kept). -->
+<PubmedArticleSet>
+<PubmedArticle>
+  <MedlineCitation Status="MEDLINE" Owner="NLM">
+    <PMID Version="1">20043424</PMID>
+    <Article PubModel="Print">
+      <Journal><JournalIssue><PubDate><Year>2009</Year><Month>Dec</Month></PubDate></JournalIssue>
+        <Title>Emergency nurse</Title><ISOAbbreviation>Emerg Nurse</ISOAbbreviation></Journal>
+      <ArticleTitle>Ibuprofen and warfarin.</ArticleTitle>
+      <PublicationTypeList><PublicationType UI="D016420">Comment</PublicationType><PublicationType UI="D016422">Letter</PublicationType></PublicationTypeList>
+    </Article>
+  </MedlineCitation>
+  <PubmedData><ArticleIdList><ArticleId IdType="pubmed">20043424</ArticleId><ArticleId IdType="doi">10.7748/en.17.8.7.s10</ArticleId></ArticleIdList></PubmedData>
+</PubmedArticle>
+<PubmedArticle>
+  <MedlineCitation Status="MEDLINE" Owner="NLM">
+    <PMID Version="1">19719333</PMID>
+    <Article PubModel="Print">
+      <Journal><JournalIssue><PubDate><Year>2009</Year></PubDate></JournalIssue>
+        <Title>Drugs</Title><ISOAbbreviation>Drugs</ISOAbbreviation></Journal>
+      <ArticleTitle>Interactions between herbal medicines and prescribed drugs: an updated systematic review.</ArticleTitle>
+      <Abstract><AbstractText>The concomitant use of herbal medicines and pharmacotherapy is wide spread. Warfarin was the drug most often involved. Analgesics such as ibuprofen were rarely studied.</AbstractText></Abstract>
+      <PublicationTypeList><PublicationType UI="D016428">Journal Article</PublicationType><PublicationType UI="D000078182">Systematic Review</PublicationType></PublicationTypeList>
+    </Article>
+  </MedlineCitation>
+  <PubmedData><ArticleIdList><ArticleId IdType="doi">10.2165/11317010-000000000-00000</ArticleId></ArticleIdList></PubmedData>
+</PubmedArticle>
+<PubmedArticle>
+  <MedlineCitation Status="MEDLINE" Owner="NLM">
+    <PMID Version="1">30782418</PMID>
+    <Article PubModel="Print">
+      <Journal><JournalIssue><PubDate><MedlineDate>1998 Dec-1999 Jan</MedlineDate></PubDate></JournalIssue>
+        <Title>Journal of clinical pharmacology</Title></Journal>
+      <ArticleTitle>Bleeding risk with NSAIDs in anticoagulated patients.</ArticleTitle>
+      <Abstract>
+        <AbstractText Label="BACKGROUND">NSAIDs are widely used.</AbstractText>
+        <AbstractText Label="RESULTS">Concomitant ibuprofen increased the risk of GI bleeding in patients on warfarin.</AbstractText>
+        <AbstractText Label="CONCLUSIONS">Avoid the combination when possible.</AbstractText>
+      </Abstract>
+      <PublicationTypeList><PublicationType UI="D016428">Journal Article</PublicationType></PublicationTypeList>
+    </Article>
+  </MedlineCitation>
+  <PubmedData><ArticleIdList></ArticleIdList></PubmedData>
+</PubmedArticle>
+<PubmedArticle>
+  <MedlineCitation Status="PubMed-not-MEDLINE" Owner="NLM">
+    <PMID Version="1">11111111</PMID>
+    <Article PubModel="Electronic">
+      <Journal><JournalIssue><PubDate></PubDate></JournalIssue><ISOAbbreviation>Case Rep Med</ISOAbbreviation></Journal>
+      <ArticleTitle>Notes on <i>ibuprofen</i>: a case report.</ArticleTitle>
+      <Abstract><AbstractText>A patient on <i>warfarin</i> also took <b>ibuprofen</b> last spring.</AbstractText></Abstract>
+      <ArticleDate DateType="Electronic"><Year>2021</Year><Month>03</Month><Day>02</Day></ArticleDate>
+      <PublicationTypeList><PublicationType UI="D002363">Case Reports</PublicationType></PublicationTypeList>
+    </Article>
+  </MedlineCitation>
+</PubmedArticle>
+</PubmedArticleSet>

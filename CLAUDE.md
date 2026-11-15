@@ -51,13 +51,14 @@ ddi/config.py              Settings: st.secrets → env → .env
 ddi/models.py              pydantic-модели
 ddi/llm.py                 complete(system, user): groq|openrouter|gemini|ollama, ретраи на 429
 ddi/sources/dailymed.py    готов: find_interactions(a, b) → (evidence, errors), поиск в обе стороны
-ddi/sources/pubmed.py      TODO: search, fetch_abstracts
-ddi/agents/retrievers.py   dailymed_agent подключён (без LLM-сводки); pubmed_agent — заглушка
+ddi/sources/pubmed.py      готов: find_interactions(a, b) → (evidence, errors), ранжирование статей
+ddi/agents/retrievers.py   оба агента подключены к клиентам (LLM-сводки пока нет)
 ddi/agents/synthesizer.py  заглушка
 ddi/agents/critic.py       заглушка
 ddi/agents/orchestrator.py готов
 tests/test_smoke.py        прогон пайплайна без сети
 tests/test_dailymed.py     клиент DailyMed на урезанных реальных ответах (tests/fixtures/dailymed/)
+tests/test_pubmed.py       клиент PubMed на урезанных реальных ответах (tests/fixtures/pubmed/)
 ```
 
 ## Статус
@@ -65,11 +66,11 @@ tests/test_dailymed.py     клиент DailyMed на урезанных реа�
 - [x] Каркас, конфиг, модели, UI, оркестратор
 - [x] Обёртка LLM (`ddi/llm.py`), проверена реальным вызовом Groq
 - [x] Клиент DailyMed (проверен вживую на 4 парах из шага 4)
-- [ ] Клиент PubMed
-- [ ] Агенты-поисковики с LLM-сводкой (DailyMed уже отдаёт evidence, сводки нет)
+- [x] Клиент PubMed (проверен вживую на 4 парах из шага 4)
+- [ ] Агенты-поисковики с LLM-сводкой (оба уже отдают evidence, сводки нет)
 - [ ] Синтезатор и критик (промпты, формат ссылок)
 - [ ] Кэширование (`st.cache_data`), обработка ошибок в UI
-- [ ] Тесты клиентов (сохранённые ответы API, без сети): DailyMed готов, PubMed нет
+- [x] Тесты клиентов (сохранённые ответы API, без сети)
 - [ ] Деплой на Streamlit Community Cloud
 - [ ] Презентация
 
@@ -90,12 +91,27 @@ tests/test_dailymed.py     клиент DailyMed на урезанных реа�
 - У инструкций нового формата заголовок документа — дисклеймер «These highlights…», поэтому
   название берётся из результатов поиска.
 
+## Особенности PubMed (выяснено на живых данных)
+
+- Запрос: `<a>[tiab] AND <b>[tiab] AND (drug interactions[mh] OR interaction[tiab])`, `sort=relevance`,
+  10 PMID → один `efetch`. Передаются `tool=ddi-agents`, а также `email` и `api_key`, если заданы.
+  Пауза между запросами: 0,34 с без ключа, 0,11 с с ключом (общая блокировка на процесс).
+- Сортировка по релевантности поднимает общие обзоры, где пара упомянута вскользь, а
+  статьи по связыванию с альбумином используют warfarin и ibuprofen как «маркеры мест связывания».
+  Поэтому статьи переранжируются локально (`score_article`): 3 — оба препарата в заголовке;
+  2 — оба в одном предложении аннотации со словом про взаимодействие или эффект; 1 — просто
+  совместное упоминание или биофизическая статья; 0 — препараты в разных предложениях.
+  В evidence попадают только статьи с оценкой ≥ 2 (`MIN_SCORE`), до 5 штук.
+- Длинные аннотации сокращаются до 1 500 символов: сначала предложения с обоими препаратами,
+  потом вывод, потом предложения с одним из них; пропуски помечаются «…».
+- Статьи без аннотации остаются, только если оба препарата есть в заголовке (тогда текст = заголовок).
+- Для пары без известного взаимодействия (metformin + amoxicillin) PubMed всё равно может отдать
+  1 статью о совместном приёме. Решать, есть ли там взаимодействие, должен синтезатор, а не клиент.
+
 ## Следующие шаги (по порядку)
 
 1. ~~DailyMed~~ — готово.
-2. **PubMed.** `esearch.fcgi?db=pubmed&term=<a>[tiab] AND <b>[tiab] AND (drug interactions[mh] OR interaction[tiab])&retmax=10&retmode=json`,
-   затем `efetch.fcgi?db=pubmed&id=...&retmode=xml` → заголовок, аннотация, год, PMID. Передавать
-   `tool`, `email` и `api_key`, если они заданы. Лимит: около 3 запросов в секунду без ключа.
+2. ~~PubMed~~ — готово.
 3. Агенты: retriever → краткая LLM-сводка по своим evidence. Синтезатор работает только по evidence
    и обязательно ставит ссылки. Критик возвращает список неподтверждённых утверждений.
 4. Проверить вживую на парах `warfarin + ibuprofen`, `simvastatin + clarithromycin`,
