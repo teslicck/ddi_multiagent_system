@@ -4,6 +4,8 @@
 из **DailyMed** (инструкции FDA, раздел 7 «Drug Interactions») и **PubMed**
 (научные статьи), сводит её в ответ со ссылками и проверяет агентом-критиком.
 
+**Демо:** https://ddimultiagentsystemdaniiln.streamlit.app/
+
 > Справочный инструмент, не медицинская консультация.
 
 ## Архитектура
@@ -47,5 +49,14 @@ pytest
 ## Деплой (Streamlit Community Cloud)
 
 1. Запушить репозиторий на GitHub (без `secrets.toml`).
-2. share.streamlit.io → New app → репозиторий, ветка `main`, файл `app.py`.
-3. Settings → Secrets: вставить содержимое `secrets.toml`.
+2. share.streamlit.io → New app → репозиторий, ветка `main`, файл `app.py`, Python 3.12.
+3. Advanced settings → Secrets: достаточно двух строк
+   ```toml
+   LLM_PROVIDER = "groq"
+   LLM_API_KEY = "gsk_..."
+   ```
+   Модели подставляются по умолчанию, ключ NCBI необязателен.
+
+Каждый пуш в `main` пересобирает приложение автоматически. Приложение публичное:
+все запросы тратят лимит одного ключа Groq (8 000 токенов в минуту на модель);
+повторные запросы той же пары берутся из кэша на сутки.
