@@ -1,7 +1,26 @@
 """Shared data structures passed between agents."""
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+NameStatus = Literal["exact", "approximate", "combination", "not_found", "unavailable"]
+
+
+class DrugName(BaseModel):
+    """A user-entered drug name normalized via RxNorm (ddi/sources/rxnorm.py)."""
+
+    input: str
+    name: str                    # what the sources are searched with (lowercase ingredient)
+    status: NameStatus
+    rxcui: str = ""
+    matched: str = ""            # the RxNorm concept the input matched ("Advil", "warfarin")
+    ingredients: list[str] = Field(default_factory=list)
+
+    @property
+    def changed(self) -> bool:
+        return self.name != self.input.strip().lower()
 
 
 class Evidence(BaseModel):
@@ -35,3 +54,5 @@ class FinalReport(BaseModel):
     issues: list[str] = Field(default_factory=list)   # critic findings, one per item
     errors: list[str] = Field(default_factory=list)   # synthesizer / critic failures
     reports: list[SourceReport] = Field(default_factory=list)
+    drugs: list[DrugName] = Field(default_factory=list)   # normalized inputs, [a, b]
+    stopped: bool = False        # True: input rejected before searching (unknown / combo / same)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from ddi import llm
 from ddi.agents.common import (NOT_FOUND_MARK, all_evidence, describe, evidence_block,
-                               is_not_found, not_found_answer)
+                               is_not_found, normalize_citations, not_found_answer)
 from ddi.models import SourceReport
 
 SOURCE_NAMES = {"dailymed": "DailyMed (инструкции FDA)", "pubmed": "PubMed (научные статьи)"}
@@ -55,6 +55,7 @@ def synthesize(drug_a: str, drug_b: str, reports: list[SourceReport]) -> tuple[s
 
     user = f"Препараты: {drug_a} + {drug_b}\n\n" + "\n\n".join(_source_section(r) for r in reports)
     try:
-        return llm.complete(SYSTEM.format(a=drug_a, b=drug_b), user, max_tokens=900), []
+        reply = llm.complete(SYSTEM.format(a=drug_a, b=drug_b), user, max_tokens=900)
+        return normalize_citations(reply), []
     except Exception as exc:
         return _fallback(drug_a, drug_b, reports), [f"Синтезатор: {exc}"]

@@ -38,6 +38,15 @@ class FakeLLM:
         raise AssertionError(f"unexpected prompt: {system[:80]}")
 
 
+@pytest.fixture(autouse=True)
+def no_rxnav(monkeypatch):
+    """Orchestrator tests here are about agents; names pass through unchanged."""
+    from ddi.models import DrugName
+    from ddi.sources import rxnorm
+    monkeypatch.setattr(rxnorm, "normalize", lambda s: DrugName(
+        input=s.strip(), name=s.strip().lower(), status="exact"))
+
+
 @pytest.fixture
 def fake_llm(monkeypatch):
     def install(**replies):
@@ -55,6 +64,18 @@ def test_refs_and_citation_parsing():
     assert [e.ref for e in evs] == ["DM1", "PMID:42", "DM2"]
     text = "A [DM1]. B [PMID: 42][dm2]. C [DM1, PMID:42]. Not a ref [1] [see above]."
     assert common.citations(text) == ["DM1", "PMID:42", "DM2"]
+
+
+def test_lookalike_brackets_from_gpt_oss_are_normalized(fake_llm):
+    # live case: gpt-oss answered with 【DM1】【PMID:2783873】
+    evs = common.assign_refs([dm(), pm("2783873")])
+    raw = "**Вывод:** риск кровотечения повышен【DM1】【PMID:2783873】."
+    assert common.citations(raw) == ["DM1", "PMID:2783873"]
+    assert common.citation_problems(common.normalize_citations(raw), evs) == []
+
+    fake_llm(**{"синтезатор": raw})
+    answer, _ = synthesizer.synthesize("warfarin", "ibuprofen", reports())
+    assert answer == "**Вывод:** риск кровотечения повышен[DM1][PMID:2783873]."
 
 
 def test_is_not_found_tolerates_punctuation():

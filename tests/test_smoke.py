@@ -1,9 +1,12 @@
 from ddi.agents.orchestrator import run
-from ddi.sources import dailymed, pubmed
+from ddi.models import DrugName
+from ddi.sources import dailymed, pubmed, rxnorm
 
 
 def test_pipeline_runs_offline(monkeypatch):
     # keep the smoke test off the network
+    monkeypatch.setattr(rxnorm, "normalize", lambda s: DrugName(
+        input=s.strip(), name=s.strip().lower(), status="exact"))
     monkeypatch.setattr(dailymed, "find_interactions", lambda a, b, **kw: ([], ["offline"]))
     monkeypatch.setattr(pubmed, "find_interactions", lambda a, b, **kw: ([], ["offline"]))
     report = run(" warfarin ", "ibuprofen")

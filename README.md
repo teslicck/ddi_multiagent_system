@@ -11,6 +11,8 @@
 ```
 Пользователь (Streamlit)
         │
+   Нормализация названий (RxNorm: Advil → ibuprofen, опечатки, комбинации)
+        │
    Оркестратор ──┬── DailyMed-агент ── DailyMed REST API  ─┐ параллельно,
                  └── PubMed-агент  ── NCBI E-utilities    ─┘ каждый с LLM-сводкой
         │

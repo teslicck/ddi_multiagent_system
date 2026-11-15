@@ -29,6 +29,19 @@ def link_citations(text: str, report: FinalReport) -> str:
     return re.sub(r"\[(DM\d+|PMID:\s?\d+)\]", repl, text, flags=re.I)
 
 
+def show_normalization(report: FinalReport) -> None:
+    """What each typed name was searched as (RxNorm)."""
+    for d in report.drugs:
+        if d.status == "approximate":
+            st.warning(f"«{d.input}» не найдено точно; распознано как **{d.name}** "
+                       f"(RxNorm: {d.matched}). Проверьте, что это нужный препарат.")
+        elif d.status == "unavailable":
+            st.warning(f"RxNorm недоступен: «{d.input}» ищется как введено, "
+                       f"торговые названия и опечатки не распознаются.")
+        elif d.changed:
+            st.caption(f"«{d.input}» → действующее вещество **{d.name}** (RxNorm)")
+
+
 st.title("💊 Взаимодействие лекарств")
 st.caption("Мультиагентный сбор информации из DailyMed (инструкции FDA) и PubMed (литература).")
 st.warning("Справочный инструмент, не медицинская консультация. "
@@ -36,16 +49,16 @@ st.warning("Справочный инструмент, не медицинска
 
 with st.form("query"):
     col1, col2 = st.columns(2)
-    drug_a = col1.text_input("Препарат 1 (англ.)", placeholder="warfarin")
-    drug_b = col2.text_input("Препарат 2 (англ.)", placeholder="ibuprofen")
+    drug_a = col1.text_input("Препарат 1 (англ., МНН или торговое)", placeholder="warfarin")
+    drug_b = col2.text_input("Препарат 2 (англ., МНН или торговое)", placeholder="Advil")
     submitted = st.form_submit_button("Проверить")
 
 if submitted:
-    a, b = drug_a.strip().lower(), drug_b.strip().lower()
+    a, b = drug_a.strip(), drug_b.strip()      # RxNorm handles case; keep it for messages
     if not a or not b:
         st.error("Укажите оба препарата.")
         st.stop()
-    if a == b:
+    if a.lower() == b.lower():
         st.error("Укажите два разных препарата.")
         st.stop()
 
@@ -56,6 +69,11 @@ if submitted:
             st.error(f"Не удалось выполнить запрос: {exc}")
             st.stop()
 
+    if report.stopped:                    # unknown name / combination / same drug
+        st.error(report.answer)
+        st.stop()
+
+    show_normalization(report)
     st.subheader("Итог")
     st.markdown(link_citations(report.answer, report))
     for err in report.errors:

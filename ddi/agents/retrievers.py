@@ -6,7 +6,7 @@ Each agent knows only its own source. The summary cites fragments by id
 from __future__ import annotations
 
 from ddi import llm
-from ddi.agents.common import NOT_FOUND_MARK, assign_refs, evidence_block
+from ddi.agents.common import NOT_FOUND_MARK, assign_refs, evidence_block, normalize_citations
 from ddi.models import Evidence, SourceReport
 from ddi.sources import dailymed, pubmed
 
@@ -44,7 +44,8 @@ def summarize(system: str, drug_a: str, drug_b: str,
         return NOT_FOUND_MARK, []          # nothing to read: no LLM call
     user = (f"Препараты: {drug_a} + {drug_b}\n\nФрагменты:\n\n{evidence_block(evidence)}")
     try:
-        return llm.complete(system.format(a=drug_a, b=drug_b), user, max_tokens=700), []
+        reply = llm.complete(system.format(a=drug_a, b=drug_b), user, max_tokens=700)
+        return normalize_citations(reply), []
     except Exception as exc:               # LLM down / not configured: keep the evidence
         return "", [f"LLM-сводка не получена ({exc})"]
 

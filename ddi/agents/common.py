@@ -50,6 +50,16 @@ def assign_refs(evidence: list[Evidence]) -> list[Evidence]:
     return evidence
 
 
+# gpt-oss sometimes cites in OpenAI's own style: 【DM1】 instead of [DM1]
+# (seen live, Nov 2026). Map look-alike brackets back before anything parses them.
+_BRACKET_LOOKALIKES = str.maketrans({"【": "[", "】": "]", "［": "[", "］": "]",
+                                     "〔": "[", "〕": "]", "⟦": "[", "⟧": "]"})
+
+
+def normalize_citations(text: str) -> str:
+    return text.translate(_BRACKET_LOOKALIKES)
+
+
 def _norm(token: str) -> str:
     """'pmid: 123' -> 'PMID:123', 'dm2' -> 'DM2'."""
     return re.sub(r"\s+", "", token).upper()
@@ -58,7 +68,7 @@ def _norm(token: str) -> str:
 def citations(text: str) -> list[str]:
     """Citation ids in order of appearance. Accepts [DM1][PMID:1] and [DM1, PMID:1]."""
     out: list[str] = []
-    for group in _BRACKETS.findall(text):
+    for group in _BRACKETS.findall(normalize_citations(text)):
         for token in re.split(r"[,;]", group):
             if _REF_TOKEN.match(token.strip()):
                 ref = _norm(token)

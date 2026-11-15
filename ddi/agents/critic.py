@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from ddi import llm
 from ddi.agents.common import (all_evidence, citation_problems, citations,
-                               is_not_found_answer, parse_json_object)
+                               is_not_found_answer, normalize_citations, parse_json_object)
 from ddi.models import Evidence, SourceReport
 
 SYSTEM = """Ты — агент-критик. Проверь ответ о взаимодействии лекарств по исходным фрагментам.
@@ -48,7 +48,7 @@ def critique(answer: str, reports: list[SourceReport]) -> tuple[str, list[str], 
     user = f"Ответ:\n{answer}\n\nИсходные фрагменты:\n\n{fragments}"
     try:
         raw = llm.complete(SYSTEM, user, max_tokens=700, model=llm.critic_model())
-        data = parse_json_object(raw)
+        data = parse_json_object(normalize_citations(raw))
         if data is None:
             errors.append("Критик вернул ответ не в формате JSON")
         else:
