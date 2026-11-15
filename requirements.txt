@@ -1,0 +1,7 @@
+streamlit>=1.40
+requests>=2.32
+pydantic>=2.7
+tenacity>=8.2          # retries with backoff for external APIs
+python-dotenv>=1.0     # local .env support
+pytest>=8.0
+# LLM: OpenAI-compatible HTTP API via requests (Groq / OpenRouter / Gemini / Ollama), no SDK needed
