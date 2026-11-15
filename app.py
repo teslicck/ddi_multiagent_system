@@ -10,6 +10,8 @@ from ddi.models import FinalReport
 st.set_page_config(page_title="DDI Agents", page_icon="💊", layout="centered")
 
 SOURCE_TITLES = {"dailymed": "DailyMed — инструкции FDA", "pubmed": "PubMed — научные статьи"}
+SECTION_BADGES = {"boxed_warning": ":red-background[BOXED WARNING] ",
+                  "contraindications": ":red-background[Противопоказания] "}
 
 
 @st.cache_data(ttl=24 * 3600, show_spinner=False)
@@ -117,6 +119,7 @@ if submitted:
             for ev in r.evidence:
                 meta = ev.meta
                 extra = f" · {meta['year']}" if meta.get("year") else ""
-                st.markdown(f"**[{ev.ref}] [{ev.title}]({ev.url})**{extra}")
+                badge = SECTION_BADGES.get(meta.get("kind"), "")
+                st.markdown(f"{badge}**[{ev.ref}] [{ev.title}]({ev.url})**{extra}")
                 st.caption(ev.text)
             st.caption(f"Запрос: `{r.query}`")

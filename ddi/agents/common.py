@@ -83,15 +83,24 @@ def all_evidence(reports: list[SourceReport]) -> list[Evidence]:
 
 # --------------------------------------------------------------------------- formatting
 
+SECTION_LABELS = {
+    "boxed_warning": "раздел BOXED WARNING — самое строгое предупреждение FDA",
+    "contraindications": "раздел «Противопоказания» (CONTRAINDICATIONS)",
+}
+
+
 def describe(ev: Evidence) -> str:
     m = ev.meta
     if ev.source == "pubmed":
         bits = [b for b in (m.get("year"), ", ".join(m.get("pub_types", [])[:2])) if b]
         return f"{ev.title} ({'; '.join(bits)})" if bits else ev.title
+    notes = []
+    if m.get("kind") in SECTION_LABELS:
+        notes.append(SECTION_LABELS[m["kind"]])
     if m.get("match") == "class":
-        return (f"{ev.title} (препарат {m.get('about')} здесь не назван; фрагмент найден по "
-                f"классу «{m.get('matched_term')}», к которому он относится)")
-    return ev.title
+        notes.append(f"препарат {m.get('about')} здесь не назван; фрагмент найден по классу "
+                     f"«{m.get('matched_term')}», к которому он относится")
+    return f"{ev.title} ({'; '.join(notes)})" if notes else ev.title
 
 
 def evidence_block(evidence: list[Evidence], max_chars: int = MAX_EVIDENCE_CHARS) -> str:

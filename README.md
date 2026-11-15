@@ -1,7 +1,7 @@
 # DDI Agents
 
 Мультиагентное приложение: собирает информацию о взаимодействии двух лекарств
-из **DailyMed** (инструкции FDA, раздел 7 «Drug Interactions») и **PubMed**
+из **DailyMed** (инструкции FDA: Boxed Warning, Contraindications, Drug Interactions) и **PubMed**
 (научные статьи), сводит её в ответ со ссылками и проверяет агентом-критиком.
 
 **Демо:** https://ddimultiagentsystemdaniiln.streamlit.app/

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Trimmed from real labels (clarithromycin, Nov 2026; the real label has no
+     Boxed Warning, one is added here): Boxed Warning without a title
+     (old-format style, matched by LOINC 34066-1), CONTRAINDICATIONS with a
+     subsection naming simvastatin, a top-level "Contraindications for
+     Co-administered Drugs" section that is NOT the contraindications section,
+     and the Drug Interactions section. -->
+<document xmlns="urn:hl7-org:v3">
+  <title>These highlights do not include all the information needed to use CLARITHROMYCIN TABLETS safely and effectively.</title>
+  <component>
+    <structuredBody>
+      <component>
+        <section ID="BOX">
+          <code code="34066-1" codeSystem="2.16.840.1.113883.6.1" displayName="BOXED WARNING SECTION"/>
+          <title/>
+          <text>
+            <paragraph>Macrolides may prolong the QT interval; fatal arrhythmias have been reported.</paragraph>
+          </text>
+        </section>
+      </component>
+      <component>
+        <section ID="S4">
+          <code code="34070-3" codeSystem="2.16.840.1.113883.6.1" displayName="CONTRAINDICATIONS SECTION"/>
+          <title>4 CONTRAINDICATIONS</title>
+          <component>
+            <section ID="S4.1">
+              <code code="42229-5" codeSystem="2.16.840.1.113883.6.1" displayName="SPL UNCLASSIFIED SECTION"/>
+              <title>4.1 Hypersensitivity</title>
+              <text><paragraph>Clarithromycin is contraindicated in patients with known hypersensitivity to macrolide antibiotics.</paragraph></text>
+            </section>
+          </component>
+          <component>
+            <section ID="S4.5">
+              <code code="42229-5" codeSystem="2.16.840.1.113883.6.1" displayName="SPL UNCLASSIFIED SECTION"/>
+              <title>4.5 Lomitapide, Lovastatin, and Simvastatin</title>
+              <text><paragraph>Concomitant administration with lomitapide is contraindicated due to increased transaminases.</paragraph>
+                <paragraph>Do not use clarithromycin concomitantly with HMG-CoA reductase inhibitors (statins) that are extensively metabolized by CYP3A4 (lovastatin or simvastatin), due to the increased risk of myopathy, including rhabdomyolysis.</paragraph></text>
+            </section>
+          </component>
+        </section>
+      </component>
+      <component>
+        <section ID="S4.8">
+          <code code="42229-5" codeSystem="2.16.840.1.113883.6.1" displayName="SPL UNCLASSIFIED SECTION"/>
+          <title>4.8 Contraindications for Co-administered Drugs</title>
+          <text><paragraph>Refer to the full prescribing information of simvastatin (must not be read).</paragraph></text>
+        </section>
+      </component>
+      <component>
+        <section ID="S7">
+          <code code="34073-7" codeSystem="2.16.840.1.113883.6.1" displayName="DRUG INTERACTIONS SECTION"/>
+          <title>7 DRUG INTERACTIONS</title>
+          <text>
+            <table><tbody>
+              <tr><td colspan="2">HMG-CoA Reductase Inhibitors (Statins)</td></tr>
+              <tr><td>Lovastatin, Simvastatin</td><td>Contraindicated. Increased risk of rhabdomyolysis.</td></tr>
+              <tr><td>Atorvastatin</td><td>Use the lowest dose.</td></tr>
+            </tbody></table>
+            <paragraph>Simvastatin exposure increased in a pharmacokinetic study.</paragraph>
+            <paragraph>A third simvastatin note, beyond the per-direction limit.</paragraph>
+          </text>
+        </section>
+      </component>
+    </structuredBody>
+  </component>
+</document>

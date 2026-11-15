@@ -135,6 +135,7 @@ ddi/agents/reviser.py      исправление ответа по замеча
 ddi/agents/orchestrator.py готов
 tests/test_smoke.py        прогон пайплайна без сети
 tests/test_dailymed.py     клиент DailyMed на урезанных реальных ответах (tests/fixtures/dailymed/)
+tests/test_dailymed_sections.py  разделы Boxed Warning / Contraindications, приоритеты отбора
 tests/test_pubmed.py       клиент PubMed на урезанных реальных ответах (tests/fixtures/pubmed/)
 tests/test_agents.py       агенты с подставным LLM (FakeLLM), включая бюджет вызовов
 tests/test_revision.py     раунд исправления (принято / отклонено / сбои) и ожидание при 429
@@ -154,6 +155,7 @@ tests/test_rxclass.py      термины классов на сохранённ
 - [x] Нормализация названий через RxNorm (бренды, соли, опечатки, комбинации)
 - [x] Классы препаратов из RxClass вместо ручного списка
 - [x] Перегенерация ответа по замечаниям критика с повторной проверкой
+- [x] Разделы Boxed Warning и Contraindications в DailyMed
 - [ ] Эталонный набор пар: чувствительность поиска (без LLM) и замечания до/после исправления
 - [x] Тесты клиентов (сохранённые ответы API, без сети)
 - [x] Деплой на Streamlit Community Cloud: https://ddimultiagentsystemdaniiln.streamlit.app/
@@ -162,6 +164,24 @@ tests/test_rxclass.py      термины классов на сохранённ
 
 ## Особенности DailyMed (выяснено на живых данных)
 
+- **Читаются три раздела:** Boxed Warning (LOINC 34066-1), Contraindications (34070-3) и
+  Drug Interactions (34073-7), по коду **или** заголовку. Каждый фрагмент помечен
+  `meta["kind"]` = `boxed_warning` / `contraindications` / `interactions`. Самые опасные
+  сочетания часто только там: в инструкции clarithromycin «Do not use … with lovastatin or
+  simvastatin» стоит в Contraindications. На направление берётся до 2 фрагментов Drug
+  Interactions (как раньше) плюс 1 из Boxed Warning / Contraindications (`select_hits`):
+  совпадение по имени важнее раздела, Boxed Warning важнее Contraindications; защита от
+  чужой силы действия действует везде. LLM получает пометку раздела и правило не смягчать
+  «contraindicated»; в UI — красная метка раздела у фрагмента. Заголовок «4.8
+  Contraindications for Co-administered Drugs» на верхнем уровне разделом не считается.
+  Абзац, где препарат назван в тексте, ранжируется выше абзаца, совпавшего только по
+  заголовку подраздела («4.5 Lomitapide, Lovastatin, and Simvastatin» начинается с абзаца
+  про lomitapide). Живая проверка: simvastatin + clarithromycin — Contraindications
+  clarithromycin; sertraline + linezolid — Contraindications sertraline («MAOIs, including
+  linezolid»); tramadol + alprazolam — Boxed Warning в обеих инструкциях (опиоиды +
+  бензодиазепины: седация, угнетение дыхания, смерть); metformin + amoxicillin — по-прежнему 0.
+- Модель транслитерировала названия («тримедол», «тррамадол»); во всех промптах правило
+  писать названия латиницей, как в запросе.
 - Без фильтра поиск возвращает в основном OTC-инструкции («Drug Facts»), где нет раздела
   Drug Interactions. Поэтому ищем только рецептурные: `doctype=34391-3`.
 - LOINC `34073-7` ненадёжен: в старых инструкциях им бывает помечен посторонний раздел
@@ -205,8 +225,9 @@ tests/test_rxclass.py      термины классов на сохранённ
 
 Автор разрешил отходить от этого плана, если проект становится лучше (жёсткие условия курса
 остаются: ровно 2 источника из реестра, RxNorm только как вспомогательный шаг).
-Кандидаты на улучшение надёжности: оригинальные инструкции вместо перепаковщиков; разделы
-Contraindications / Boxed Warning; шум от общих терминов (например, «serotonergic»
+Кандидаты на улучшение надёжности (автор считает, что для курсового уже достаточно):
+оригинальные инструкции вместо перепаковщиков; жёсткие формулировки («contraindicated»)
+извлекать кодом и сверять с ответом; шум от общих терминов (например, «serotonergic»
 находит строку про литий в таблице escitalopram).
 
 ## Результаты живой проверки (ноябрь 2026, пригодится для доклада)

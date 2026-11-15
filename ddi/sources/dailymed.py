@@ -1,10 +1,11 @@
-"""DailyMed REST client (FDA labels, 'Drug Interactions' section).
+"""DailyMed REST client (FDA labels: Boxed Warning, Contraindications, Drug Interactions).
 
 Docs: https://dailymed.nlm.nih.gov/dailymed/app-support-web-services.cfm
 
 Pure HTTP + XML parsing, no LLM. Flow:
-    spls.json?drug_name=X  ->  setid  ->  spls/{setid}.xml  ->  Drug Interactions
-    section  ->  passages that mention the other drug (or its class).
+    spls.json?drug_name=X  ->  setid  ->  spls/{setid}.xml  ->  Boxed Warning,
+    Contraindications, Drug Interactions  ->  passages that mention the other
+    drug (or its class), each tagged with the section kind.
 
 Real-world quirks handled here:
   * Many labels are OTC "Drug Facts" without a Drug Interactions section, so the
@@ -31,12 +32,27 @@ LABEL_URL = "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid={setid}"
 
 RX_DOCTYPE = "34391-3"            # HUMAN PRESCRIPTION DRUG LABEL
 DRUG_INTERACTIONS_LOINC = "34073-7"
+CONTRAINDICATIONS_LOINC = "34070-3"
+BOXED_WARNING_LOINC = "34066-1"
 MAX_PASSAGE_CHARS = 1500
+
+# Sections read from a label, most serious first. Contraindications and the
+# Boxed Warning hold the most dangerous combinations ("contraindicated with
+# lovastatin and simvastatin" in the clarithromycin label), which the Drug
+# Interactions section may only cross-reference.
+KIND_PRIORITY = {"boxed_warning": 0, "contraindications": 1, "interactions": 2}
+# Extra fragments per direction from Boxed Warning / Contraindications, on top
+# of `per_direction` Drug Interactions fragments (keeps the LLM token budget small).
+CRITICAL_PER_DIRECTION = 1
 
 _NS = "{urn:hl7-org:v3}"
 _BLOCK_TAGS = {f"{_NS}paragraph", f"{_NS}item"}
 _DI_TITLE = re.compile(r"drug\s+interactions?", re.I)
 _LAB_TITLE = re.compile(r"laborator", re.I)
+_BOXED_TITLE = re.compile(r"\bboxed\s+warning\b", re.I)
+# "4 CONTRAINDICATIONS", "CONTRAINDICATIONS"; not "4.8 Contraindications for Co-administered
+# Drugs" at top level (as a subsection it is read together with its parent anyway)
+_CONTRA_TITLE = re.compile(r"^\W*(\d+\s+)?contraindications\W*$", re.I)
 
 # Curated synonyms and class names that labels use instead of the drug's own
 # name. Since RxClass (ddi/sources/rxclass.py) supplies classes for any drug,
@@ -115,14 +131,26 @@ def _text(el: ET.Element) -> str:
     return re.sub(r"\s+", " ", "".join(el.itertext())).strip()
 
 
-def _is_interactions_section(section: ET.Element) -> bool:
-    code = section.find(f"{_NS}code")
+def section_kind(section: ET.Element) -> str | None:
+    """Which of the sections we read this is: 'boxed_warning', 'contraindications',
+    'interactions', or None. Matched by LOINC code OR title (codes are not reliable)."""
+    code_el = section.find(f"{_NS}code")
+    code = code_el.get("code") if code_el is not None else ""
     title_el = section.find(f"{_NS}title")
     title = _text(title_el) if title_el is not None else ""
+    if code == BOXED_WARNING_LOINC or _BOXED_TITLE.search(title):
+        return "boxed_warning"
+    if code == CONTRAINDICATIONS_LOINC or _CONTRA_TITLE.search(title):
+        return "contraindications"
     if _LAB_TITLE.search(title):          # "Drug/Laboratory Test Interactions"
-        return False
-    return (code is not None and code.get("code") == DRUG_INTERACTIONS_LOINC) \
-        or bool(_DI_TITLE.search(title))
+        return None
+    if code == DRUG_INTERACTIONS_LOINC or _DI_TITLE.search(title):
+        return "interactions"
+    return None
+
+
+def _is_interactions_section(section: ET.Element) -> bool:
+    return section_kind(section) == "interactions"
 
 
 def _table_groups(table: ET.Element):
@@ -177,19 +205,23 @@ def _section_passages(section: ET.Element, parent_title: str = "") -> list[tuple
     return out
 
 
-def parse_interactions(xml_bytes: bytes) -> tuple[str, list[tuple[str, str]]]:
-    """Return (label title, [(section title, passage)]) from SPL XML."""
+def parse_label(xml_bytes: bytes) -> tuple[str, list[tuple[str, str, str]]]:
+    """Return (label title, [(kind, section title, passage)]) from SPL XML.
+
+    kind: 'boxed_warning' | 'contraindications' | 'interactions' (see section_kind).
+    """
     root = ET.fromstring(xml_bytes)
     doc_title_el = root.find(f"{_NS}title")
     doc_title = _text(doc_title_el) if doc_title_el is not None else "DailyMed label"
 
-    passages: list[tuple[str, str]] = []
+    passages: list[tuple[str, str, str]] = []
 
     def walk(el: ET.Element) -> None:
         for comp in el.findall(f"{_NS}component"):
             for section in comp.findall(f"{_NS}section"):
-                if _is_interactions_section(section):
-                    passages.extend(_section_passages(section))
+                kind = section_kind(section)
+                if kind:
+                    passages.extend((kind, s, t) for s, t in _section_passages(section))
                 else:
                     walk(section)
     # structuredBody -> component -> section ...
@@ -198,21 +230,30 @@ def parse_interactions(xml_bytes: bytes) -> tuple[str, list[tuple[str, str]]]:
     return doc_title, passages
 
 
-def get_interactions_section(setid: str, title: str | None = None) -> Evidence | None:
-    """Fetch a label and return its whole Drug Interactions text, or None.
+def parse_interactions(xml_bytes: bytes) -> tuple[str, list[tuple[str, str]]]:
+    """Return (label title, [(section title, passage)]) of the Drug Interactions section only."""
+    doc_title, passages = parse_label(xml_bytes)
+    return doc_title, [(s, t) for kind, s, t in passages if kind == "interactions"]
 
+
+def get_interactions_section(setid: str, title: str | None = None) -> Evidence | None:
+    """Fetch a label and return the text of the sections we read, or None.
+
+    Despite the name (kept for callers), this covers Boxed Warning and
+    Contraindications as well as Drug Interactions; each passage carries its kind.
     `title` overrides the document title, which for new-format labels is the
     "These highlights do not include..." disclaimer rather than a drug name.
     """
-    doc_title, passages = parse_interactions(_get(f"spls/{setid}.xml").content)
+    doc_title, passages = parse_label(_get(f"spls/{setid}.xml").content)
     if not passages:
         return None
     if not title:
         title = doc_title
     return Evidence(
         source="dailymed", title=title, url=LABEL_URL.format(setid=setid),
-        text="\n".join(f"[{sec}] {p}" for sec, p in passages),
-        meta={"setid": setid, "passages": [{"section": s, "text": p} for s, p in passages]},
+        text="\n".join(f"[{sec}] {p}" for _, sec, p in passages),
+        meta={"setid": setid,
+              "passages": [{"kind": k, "section": s, "text": p} for k, s, p in passages]},
     )
 
 
@@ -236,14 +277,18 @@ def filter_passages(passages: list[tuple[str, str]], drug: str,
     """
     terms = terms_for(drug, extra_terms)
     patterns = [(t, re.compile(rf"\b{re.escape(t)}", re.I)) for t in terms]
-    hits: list[tuple[int, str, str, str]] = []
+    hits: list[tuple[int, int, str, str, str]] = []
     for sec, text in passages:
         for rank, (term, pat) in enumerate(patterns):
-            if pat.search(sec) or pat.search(text):
-                hits.append((0 if rank == 0 else 1, sec, text, term))
+            in_text = bool(pat.search(text))
+            if in_text or pat.search(sec):
+                # a paragraph that names the drug itself beats one that only sits under a
+                # matching heading (live case: "4.5 Lomitapide, Lovastatin, and Simvastatin",
+                # whose first paragraph is about lomitapide)
+                hits.append((0 if rank == 0 else 1, 0 if in_text else 1, sec, text, term))
                 break
-    hits.sort(key=lambda h: h[0])           # stable: keeps label order within a rank
-    return [(sec, text, term) for _, sec, text, term in hits]
+    hits.sort(key=lambda h: (h[0], h[1]))   # stable: keeps label order within a rank
+    return [(sec, text, term) for _, _, sec, text, term in hits]
 
 
 _POTENCY = re.compile(r"\b(strong|moderate|weak|potent)\b", re.I)
@@ -321,21 +366,44 @@ def find_interactions(drug_a: str, drug_b: str, *, per_direction: int = 4,
             if section:
                 break
         if section is None:
-            errors.append(f"DailyMed: в инструкции {label_drug} нет раздела Drug Interactions")
+            errors.append(f"DailyMed: в инструкции {label_drug} нет разделов о взаимодействиях "
+                          f"и противопоказаниях")
             continue
 
-        passages = [(p["section"], p["text"]) for p in section.meta["passages"]]
-        hits = [h for h in filter_passages(passages, other, terms.get(other))
-                if not _potency_qualified_class_match(h, other)]
-        for sec, text, term in hits[:per_direction]:
+        for kind, sec, text, term in select_hits(section.meta["passages"], other,
+                                                 terms.get(other), per_direction):
             evidence.append(Evidence(
                 source="dailymed",
                 title=f"{section.title} — {sec}",
                 url=section.url,
                 text=_clip(text, term),
                 meta={"setid": section.meta["setid"], "label_drug": label_drug,
-                      "about": other, "matched_term": term, "section": sec,
+                      "about": other, "matched_term": term, "section": sec, "kind": kind,
                       # "class": the label names a class the drug belongs to, not the drug
                       "match": "name" if term == other.strip().lower() else "class"},
             ))
     return evidence, errors
+
+
+def select_hits(passages: list[dict], drug: str, extra_terms: list[str] | None,
+                per_direction: int) -> list[tuple[str, str, str, str]]:
+    """Pick the passages about `drug` from one label: (kind, section, text, term).
+
+    Up to `per_direction` from Drug Interactions (as before) plus up to
+    CRITICAL_PER_DIRECTION from Boxed Warning / Contraindications. Critical ones
+    come first; within each group, name matches before class matches. The same
+    potency guard applies everywhere.
+    """
+    by_kind: dict[str, list[tuple[str, str, str, str]]] = {}
+    for kind in KIND_PRIORITY:
+        rows = [(p["section"], p["text"]) for p in passages
+                if p.get("kind", "interactions") == kind]
+        for sec, text, term in filter_passages(rows, drug, extra_terms):
+            if not _potency_qualified_class_match((sec, text, term), drug):
+                by_kind.setdefault(kind, []).append((kind, sec, text, term))
+
+    name = drug.strip().lower()
+    critical = by_kind.get("boxed_warning", []) + by_kind.get("contraindications", [])
+    # name match first, then the more serious section (stable sort keeps label order)
+    critical.sort(key=lambda h: (h[3] != name, KIND_PRIORITY[h[0]]))
+    return critical[:CRITICAL_PER_DIRECTION] + by_kind.get("interactions", [])[:per_direction]
