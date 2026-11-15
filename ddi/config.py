@@ -28,6 +28,7 @@ class Settings:
     llm_provider: str = _get("LLM_PROVIDER")
     llm_model: str = _get("LLM_MODEL")
     llm_api_key: str = _get("LLM_API_KEY")
+    llm_critic_model: str = _get("LLM_CRITIC_MODEL")   # empty = provider default
     ncbi_api_key: str = _get("NCBI_API_KEY")
     ncbi_email: str = _get("NCBI_EMAIL")
     http_timeout: float = 20.0

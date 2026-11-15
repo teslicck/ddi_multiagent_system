@@ -27,6 +27,14 @@ DEFAULT_MODELS = {
 }
 
 
+# The critic runs on a different model: an independent check, and on Groq the
+# per-model token limit (8000 TPM on the free tier) is not shared with the
+# summaries and the synthesizer.
+DEFAULT_CRITIC_MODELS = {
+    "groq": "qwen/qwen3.8-27b",
+}
+
+
 class LLMNotConfigured(RuntimeError):
     pass
 
@@ -35,12 +43,18 @@ class LLMRateLimited(RuntimeError):
     pass
 
 
+def critic_model() -> str | None:
+    """Model for the critic agent (None = the main model)."""
+    s = get_settings()
+    return s.llm_critic_model or DEFAULT_CRITIC_MODELS.get((s.llm_provider or "").lower())
+
+
 @retry(retry=retry_if_exception_type(LLMRateLimited),
        wait=wait_exponential(multiplier=2, min=2, max=30),
        stop=stop_after_attempt(4), reraise=True)
 def complete(system: str, user: str, *, temperature: float = 0.0,
-             max_tokens: int = 800) -> str:
-    """Return the model's text reply."""
+             max_tokens: int = 800, model: str | None = None) -> str:
+    """Return the model's text reply. `model` overrides LLM_MODEL for one call."""
     s = get_settings()
     provider = (s.llm_provider or "").lower()
     if provider not in PROVIDERS:
@@ -49,7 +63,7 @@ def complete(system: str, user: str, *, temperature: float = 0.0,
     if provider != "ollama" and not s.llm_api_key:
         raise LLMNotConfigured("LLM_API_KEY is empty.")
 
-    model = s.llm_model or DEFAULT_MODELS[provider]
+    model = model or s.llm_model or DEFAULT_MODELS[provider]
     headers = {"Content-Type": "application/json"}
     if s.llm_api_key:
         headers["Authorization"] = f"Bearer {s.llm_api_key}"

@@ -11,11 +11,13 @@
 ```
 Пользователь (Streamlit)
         │
-   Оркестратор ──┬── DailyMed-агент ── DailyMed REST API
-                 └── PubMed-агент  ── NCBI E-utilities
+   Оркестратор ──┬── DailyMed-агент ── DailyMed REST API  ─┐ параллельно,
+                 └── PubMed-агент  ── NCBI E-utilities    ─┘ каждый с LLM-сводкой
         │
-   Синтезатор (LLM) → Критик (LLM) → ответ со ссылками
+   Синтезатор (LLM) → Критик (другая LLM) → ответ со ссылками [DM1] / [PMID:…]
 ```
+
+LLM: Groq (`openai/gpt-oss-120b`, критик — `qwen/qwen3.8-27b`), не больше 4 вызовов на запрос.
 
 ## Структура
 
@@ -23,7 +25,7 @@
 app.py                  Streamlit-интерфейс
 ddi/config.py           настройки (st.secrets → env → .env)
 ddi/models.py           Evidence, SourceReport, FinalReport
-ddi/llm.py              обёртка над LLM (провайдер выберем позже)
+ddi/llm.py              обёртка над LLM (OpenAI-совместимый API: Groq / OpenRouter / Gemini / Ollama)
 ddi/sources/            клиенты DailyMed и PubMed (без LLM)
 ddi/agents/             retrievers, synthesizer, critic, orchestrator
 tests/                  тесты

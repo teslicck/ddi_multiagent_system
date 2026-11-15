@@ -8,6 +8,7 @@ class Evidence(BaseModel):
     """One piece of retrieved evidence with its origin."""
 
     source: str                 # "dailymed" | "pubmed"
+    ref: str = ""               # citation id used by the LLM agents: "DM1", "PMID:123"
     title: str
     url: str
     text: str                   # excerpt the agents reason over
@@ -31,4 +32,6 @@ class FinalReport(BaseModel):
     drug_b: str
     answer: str
     critique: str = ""
+    issues: list[str] = Field(default_factory=list)   # critic findings, one per item
+    errors: list[str] = Field(default_factory=list)   # synthesizer / critic failures
     reports: list[SourceReport] = Field(default_factory=list)
