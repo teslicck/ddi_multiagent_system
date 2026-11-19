@@ -1,4 +1,5 @@
 streamlit>=1.40
+mcp==2.3.0
 requests>=2.32
 pydantic>=2.7
 tenacity>=8.2          # retries with backoff for external APIs
